@@ -1,6 +1,44 @@
 export type TowerStatus = 'online' | 'degraded' | 'offline'
 export type DataSource = 'telecom-api' | 'database' | 'json-seed' | 'mock'
-export type MapTool = 'tower' | 'relay' | 'fiber'
+export type MapTool = 'tower' | 'bts' | 'microwave' | 'fiber' | 'router' | 'core' | 'power'
+export type NetworkNodeKind = MapTool
+export type LinkMedium = 'fiber' | 'microwave' | 'ethernet'
+
+export interface NetworkNode {
+  id: string
+  name: string
+  kind: NetworkNodeKind
+  lat: number
+  lng: number
+  capacityMbps: number
+  status: TowerStatus
+  createdAt: string
+}
+
+export interface NetworkLink {
+  id: string
+  fromId: string
+  toId: string
+  medium: LinkMedium
+  distanceKm: number
+  capacityMbps: number
+  status: 'active' | 'blocked'
+}
+
+export interface TopologyIssue {
+  severity: 'critical' | 'warning' | 'info'
+  message: string
+  nodeId?: string
+}
+
+export interface TopologyAnalysis {
+  feasible: boolean
+  score: number
+  summary: string
+  reachableNodeIds: string[]
+  isolatedNodeIds: string[]
+  issues: TopologyIssue[]
+}
 
 export interface WeatherData {
   temperature: number

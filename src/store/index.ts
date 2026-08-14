@@ -1,10 +1,12 @@
 import { create } from 'zustand'
 import { analyzeNetwork } from '../agent/monitor'
+import { interpretTopologyWithAi } from '../agent/topology'
 import { appEnv } from '../config/env'
 import { getActiveDataSource, getTowerData, isLiveDataSource } from '../data/towerDataSource'
 import { simulateNetwork } from '../simulation/engine'
+import { analyzeTopology, distanceKm, nodeProfiles, suggestedMedium, validateLink } from '../simulation/topology'
 import { attachWeather } from '../weather/api'
-import type { DataSource, MapTool, MonitorEvent, TowerState } from '../types'
+import type { DataSource, MapTool, MonitorEvent, NetworkLink, NetworkNode, TowerState, TopologyAnalysis } from '../types'
 
 interface MonitorStore {
   towers: TowerState[]
@@ -13,11 +15,20 @@ interface MonitorStore {
   dataSource: DataSource
   loading: boolean
   lastRefresh: string | null
+  networkNodes: NetworkNode[]
+  networkLinks: NetworkLink[]
+  selectedNodeId: string | null
+  topologyAnalysis: TopologyAnalysis | null
+  topologyAiAdvice: string | null
   initialize: () => Promise<void>
   refresh: () => Promise<void>
   selectTower: (towerId: string | null) => void
+  selectNode: (nodeId: string | null) => void
   addEvent: (event: Omit<MonitorEvent, 'id' | 'timestamp'>) => void
   addMapAsset: (tool: MapTool, lat: number, lng: number) => void
+  connectNodes: (fromId: string, toId: string) => { ok: boolean; message: string }
+  analyzeTopology: () => TopologyAnalysis
+  interpretTopology: () => Promise<void>
 }
 
 let previousTowers = new Map<string, TowerState>()
@@ -39,6 +50,7 @@ const collectTransitions = (current: TowerState[], previous: Map<string, TowerSt
 
 export const useMonitorStore = create<MonitorStore>((set, get) => ({
   towers: [], events: [], selectedTowerId: null, dataSource: 'mock', loading: true, lastRefresh: null,
+  networkNodes: [], networkLinks: [], selectedNodeId: null, topologyAnalysis: null, topologyAiAdvice: null,
   initialize: async () => {
     await get().refresh()
     if (monitoringStarted) return
@@ -76,13 +88,42 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
       set({ loading: false })
     }
   },
-  selectTower: (towerId) => set({ selectedTowerId: towerId }),
+  selectTower: (towerId) => set({ selectedTowerId: towerId, selectedNodeId: null }),
+  selectNode: (nodeId) => set({ selectedNodeId: nodeId, selectedTowerId: null }),
   addEvent: (event) => set((state) => ({ events: [makeEvent(event), ...state.events].slice(0, 100) })),
   addMapAsset: (tool, lat, lng) => {
-    const labels: Record<MapTool, string> = { tower: 'دکل مخابراتی', relay: 'رله رادیویی', fiber: 'گره فیبر نوری' }
-    const id = `${tool}-${Date.now()}`
-    const name = `${labels[tool]} ${get().towers.length + 1}`
-    const tower: TowerState = { id, name, lat, lng, region: 'موقعیت جدید', status: 'online', signalStrength: 92, packetLoss: 0.2, cpuTemp: 42, connectedUsers: 0, bandwidthUsageMbps: 0, weather: { temperature: 24, precipitation: 0, windspeed: 8, weathercode: 0, condition: 'صاف' }, isGridPowerActive: true, batteryLevel: 100, batteryHealth: 100, estimatedRuntimeMinutes: 720, outageStartedAt: null, installedAt: new Date().toISOString(), dataSource: 'mock', lastUpdated: new Date().toISOString() }
-    set((state) => ({ towers: [...state.towers, tower], selectedTowerId: id, events: [makeEvent({ type: 'restored', towerId: id, message: `${name} به نقشه افزوده و پایش آن فعال شد` }), ...state.events].slice(0, 100) }))
+    const profile = nodeProfiles[tool]
+    const node: NetworkNode = {
+      id: `${tool}-${Date.now()}`,
+      name: `${profile.label} ${get().networkNodes.length + 1}`,
+      kind: tool, lat, lng, capacityMbps: profile.capacityMbps, status: 'online', createdAt: new Date().toISOString(),
+    }
+    set((state) => ({ networkNodes: [...state.networkNodes, node], selectedNodeId: node.id, topologyAnalysis: null, topologyAiAdvice: null }))
+  },
+  connectNodes: (fromId, toId) => {
+    const { networkNodes, networkLinks } = get()
+    const from = networkNodes.find((node) => node.id === fromId)
+    const to = networkNodes.find((node) => node.id === toId)
+    if (!from || !to) return { ok: false, message: 'هر دو تجهیز را روی نقشه انتخاب کنید.' }
+    if (networkLinks.some((link) => (link.fromId === fromId && link.toId === toId) || (link.fromId === toId && link.toId === fromId))) return { ok: false, message: 'این دو تجهیز از قبل متصل هستند.' }
+    const medium = suggestedMedium(from, to)
+    const validation = validateLink(from, to, medium)
+    if (!validation.valid) return { ok: false, message: validation.reason }
+    const link: NetworkLink = {
+      id: `link-${Date.now()}`, fromId, toId, medium, distanceKm: Math.round(distanceKm(from, to) * 100) / 100,
+      capacityMbps: Math.min(from.capacityMbps, to.capacityMbps), status: 'active',
+    }
+    set((state) => ({ networkLinks: [...state.networkLinks, link], selectedNodeId: null, topologyAnalysis: null, topologyAiAdvice: null }))
+    return { ok: true, message: `لینک ${medium === 'fiber' ? 'فیبر' : medium === 'microwave' ? 'مایکروویو' : 'اترنت'} برقرار شد.` }
+  },
+  analyzeTopology: () => {
+    const result = analyzeTopology(get().networkNodes, get().networkLinks)
+    set({ topologyAnalysis: result, topologyAiAdvice: null })
+    return result
+  },
+  interpretTopology: async () => {
+    const result = get().topologyAnalysis || get().analyzeTopology()
+    const advice = await interpretTopologyWithAi(get().networkNodes, get().networkLinks, result)
+    set({ topologyAiAdvice: advice })
   },
 }))

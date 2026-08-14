@@ -10,3 +10,11 @@ button { font: inherit; }
 .tower-dot { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid #e2e8f0; border-radius: 999px; color: #0f172a; background: #34d399; box-shadow: 0 0 0 5px rgba(52, 211, 153, .18); font-weight: 800; font-size: 13px; }
 .tower-dot.degraded { background: #fbbf24; box-shadow: 0 0 0 5px rgba(251, 191, 36, .18); }
 .tower-dot.offline { background: #fb7185; color: white; box-shadow: 0 0 0 5px rgba(251, 113, 133, .18); }
+.network-dot { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid #e2e8f0; border-radius: 9px; color: white; background: #64748b; box-shadow: 0 0 0 4px rgba(100, 116, 139, .2); font-weight: 800; font-size: 14px; }
+.network-dot.bts { background: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, .2); }
+.network-dot.microwave { background: #d97706; box-shadow: 0 0 0 4px rgba(217, 119, 6, .2); }
+.network-dot.fiber { background: #0891b2; box-shadow: 0 0 0 4px rgba(8, 145, 178, .2); }
+.network-dot.router { background: #7c3aed; box-shadow: 0 0 0 4px rgba(124, 58, 237, .2); }
+.network-dot.core { background: #be123c; box-shadow: 0 0 0 4px rgba(190, 18, 60, .2); border-radius: 50%; }
+.network-dot.power { background: #475569; }
+.network-dot.selected { outline: 3px solid #f8fafc; outline-offset: 3px; }
