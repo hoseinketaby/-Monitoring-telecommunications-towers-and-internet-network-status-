@@ -62,7 +62,7 @@ const weatherClass = (tower: TowerState) => {
   return 'clear'
 }
 
-export function TowerSimulation({ tower, onClose }: { tower: TowerState; onClose: () => void }) {
+export function TowerSimulation({ tower, onClose, embedded = false }: { tower: TowerState; onClose?: () => void; embedded?: boolean }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1_000)
@@ -82,7 +82,7 @@ export function TowerSimulation({ tower, onClose }: { tower: TowerState; onClose
   const polyline = signalPoints.map((point, index) => `${(index / (signalPoints.length - 1)) * 100},${100 - point}`).join(' ')
 
   return (
-    <div dir="rtl" className="simulation-overlay" role="dialog" aria-modal="true" aria-label={`شبیه‌سازی زنده ${tower.name}`}>
+    <div dir="rtl" className={embedded ? 'simulation-page' : 'simulation-overlay'} role={embedded ? undefined : 'dialog'} aria-modal={embedded ? undefined : true} aria-label={`شبیه‌سازی زنده ${tower.name}`}>
       <section className={`simulation-shell ${weatherClass(tower)}`}>
         <header className="simulation-header">
           <div>
@@ -90,7 +90,7 @@ export function TowerSimulation({ tower, onClose }: { tower: TowerState; onClose
             <h2>{tower.name}</h2>
             <p className="text-xs text-slate-400">{tower.id} · {tower.region} · مختصات {tower.lat.toFixed(4)}، {tower.lng.toFixed(4)}</p>
           </div>
-          <button onClick={onClose} className="simulation-close" aria-label="بستن شبیه‌سازی"><X className="h-5 w-5" /></button>
+          {!embedded && <button onClick={onClose} className="simulation-close" aria-label="بستن شبیه‌سازی"><X className="h-5 w-5" /></button>}
         </header>
 
         <div className="simulation-layout">

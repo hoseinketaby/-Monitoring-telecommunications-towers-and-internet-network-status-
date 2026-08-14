@@ -19,6 +19,8 @@ button { font: inherit; }
 .network-dot.power { background: #475569; }
 .network-dot.selected { outline: 3px solid #f8fafc; outline-offset: 3px; }
 .simulation-overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 1rem; background: rgba(2, 6, 23, .86); backdrop-filter: blur(12px); }
+.simulation-page { width: 100%; }
+.simulation-page .simulation-shell { width: 100%; max-height: none; overflow: visible; }
 .simulation-shell { width: min(1180px, 100%); max-height: calc(100vh - 2rem); overflow: auto; border: 1px solid rgba(103, 232, 249, .25); border-radius: 1.5rem; background: #08111f; box-shadow: 0 30px 100px rgba(0, 0, 0, .55), 0 0 70px rgba(8, 145, 178, .12); }
 .simulation-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.4rem; border-bottom: 1px solid rgba(148, 163, 184, .16); }
 .simulation-header h2 { margin: .2rem 0; font-size: 1.35rem; }

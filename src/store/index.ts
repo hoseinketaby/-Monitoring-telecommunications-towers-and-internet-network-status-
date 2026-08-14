@@ -6,12 +6,14 @@ import { getActiveDataSource, getTowerData, isLiveDataSource } from '../data/tow
 import { simulateNetwork } from '../simulation/engine'
 import { analyzeTopology, distanceKm, nodeProfiles, suggestedMedium, validateLink } from '../simulation/topology'
 import { attachWeather } from '../weather/api'
-import type { DataSource, MapTool, MonitorEvent, NetworkLink, NetworkNode, TowerState, TopologyAnalysis } from '../types'
+import type { AppPage, DataSource, MapTool, MonitorEvent, NetworkLink, NetworkNode, SimulationTarget, TowerState, TopologyAnalysis } from '../types'
 
 interface MonitorStore {
   towers: TowerState[]
   events: MonitorEvent[]
   selectedTowerId: string | null
+  activePage: AppPage
+  simulationTarget: SimulationTarget | null
   dataSource: DataSource
   loading: boolean
   lastRefresh: string | null
@@ -23,6 +25,9 @@ interface MonitorStore {
   initialize: () => Promise<void>
   refresh: () => Promise<void>
   selectTower: (towerId: string | null) => void
+  setActivePage: (page: AppPage) => void
+  openTowerSimulation: (towerId: string) => void
+  openToolSimulation: (tool: MapTool) => void
   selectNode: (nodeId: string | null) => void
   addEvent: (event: Omit<MonitorEvent, 'id' | 'timestamp'>) => void
   addMapAsset: (tool: MapTool, lat: number, lng: number) => void
@@ -49,7 +54,7 @@ const collectTransitions = (current: TowerState[], previous: Map<string, TowerSt
 }
 
 export const useMonitorStore = create<MonitorStore>((set, get) => ({
-  towers: [], events: [], selectedTowerId: null, dataSource: 'mock', loading: true, lastRefresh: null,
+  towers: [], events: [], selectedTowerId: null, activePage: 'dashboard', simulationTarget: null, dataSource: 'mock', loading: true, lastRefresh: null,
   networkNodes: [], networkLinks: [], selectedNodeId: null, topologyAnalysis: null, topologyAiAdvice: null,
   initialize: async () => {
     await get().refresh()
@@ -89,6 +94,9 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
     }
   },
   selectTower: (towerId) => set({ selectedTowerId: towerId, selectedNodeId: null }),
+  setActivePage: (page) => set({ activePage: page }),
+  openTowerSimulation: (towerId) => set({ simulationTarget: { type: 'tower', towerId }, activePage: 'simulation' }),
+  openToolSimulation: (tool) => set({ simulationTarget: { type: 'tool', tool }, activePage: 'simulation' }),
   selectNode: (nodeId) => set({ selectedNodeId: nodeId, selectedTowerId: null }),
   addEvent: (event) => set((state) => ({ events: [makeEvent(event), ...state.events].slice(0, 100) })),
   addMapAsset: (tool, lat, lng) => {
