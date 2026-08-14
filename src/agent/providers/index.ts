@@ -1,29 +1,12 @@
-import { appEnv } from '../../config/env'
-import { avalAiProvider } from './avalai'
-import { gapGptProvider } from './gapgpt'
-import { openRouterProvider } from './openrouter'
-import type { LLMProvider, ProviderName } from './types'
-
-const providers: Record<ProviderName, LLMProvider> = {
-  openrouter: openRouterProvider,
-  gapgpt: gapGptProvider,
-  avalai: avalAiProvider,
-}
+import type { LLMProvider } from './types'
 
 export async function chatWithFallback(params: Parameters<LLMProvider['chat']>[0]) {
-  const order = [...new Set([appEnv.llmProvider, ...appEnv.llmFallbackOrder])]
-  let lastError: unknown
-  for (const name of order) {
-    const provider = providers[name]
-    if (!provider) continue
-    try {
-      const result = await provider.chat(params)
-      console.info(`LLM response received from ${name}`)
-      return { ...result, provider: name }
-    } catch (error) {
-      lastError = error
-      console.warn(`LLM provider ${name} failed; attempting fallback.`, error)
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error('No LLM provider succeeded')
+  const response = await fetch('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  const payload = await response.json()
+  if (!response.ok) throw new Error(payload.error || 'GapGPT request failed')
+  return { content: payload.content || '', provider: 'gapgpt' as const }
 }

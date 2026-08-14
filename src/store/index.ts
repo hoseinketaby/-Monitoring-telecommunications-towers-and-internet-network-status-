@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { analyzeNetwork } from '../agent/monitor'
-import { interpretTopologyWithAi } from '../agent/topology'
+import { generateTopologyWithAi, interpretTopologyWithAi } from '../agent/topology'
 import { appEnv } from '../config/env'
 import { getActiveDataSource, getTowerData, isLiveDataSource } from '../data/towerDataSource'
 import { simulateNetwork } from '../simulation/engine'
@@ -34,6 +34,7 @@ interface MonitorStore {
   connectNodes: (fromId: string, toId: string) => { ok: boolean; message: string }
   analyzeTopology: () => TopologyAnalysis
   interpretTopology: () => Promise<void>
+  generateTopology: (prompt: string, model: string) => Promise<void>
 }
 
 let previousTowers = new Map<string, TowerState>()
@@ -133,5 +134,18 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
     const result = get().topologyAnalysis || get().analyzeTopology()
     const advice = await interpretTopologyWithAi(get().networkNodes, get().networkLinks, result)
     set({ topologyAiAdvice: advice })
+  },
+  generateTopology: async (prompt, model) => {
+    const text = prompt.trim()
+    if (!text) throw new Error('لطفاً نیازمندی توپولوژی را بنویسید.')
+    const result = await generateTopologyWithAi(text, model)
+    const analysis = analyzeTopology(result.nodes, result.links)
+    set({
+      networkNodes: result.nodes,
+      networkLinks: result.links,
+      selectedNodeId: null,
+      topologyAnalysis: analysis,
+      topologyAiAdvice: 'چینش پیشنهادی با هوش مصنوعی ایجاد شد. قبل از اجرای واقعی، ظرفیت، مسیر و مجوزها را بررسی کنید.',
+    })
   },
 }))

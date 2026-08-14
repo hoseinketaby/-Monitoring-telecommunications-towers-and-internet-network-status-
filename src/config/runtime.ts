@@ -1,11 +1,10 @@
 const storageKey = 'telecom-ai-settings'
 
 export interface AiSettings {
-  openRouterKey: string
   model: string
 }
 
-const defaults: AiSettings = { openRouterKey: '', model: '' }
+const defaults: AiSettings = { model: 'deepseek-chat' }
 
 export function getAiSettings(): AiSettings {
   try {

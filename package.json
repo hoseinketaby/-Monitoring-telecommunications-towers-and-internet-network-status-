@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "api": "node server.mjs",
     "build": "tsc -b && vite build",
+    "start": "node server.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"

@@ -1,4 +1,3 @@
-import { appEnv } from '../config/env'
 import { getAiSettings } from '../config/runtime'
 import type { TowerState } from '../types'
 import { fallbackAnalysis } from './fallbackAnalysis'
@@ -49,7 +48,7 @@ export async function analyzeNetwork(towers: TowerState[], report = false): Prom
     const snapshot = createNetworkSnapshot(towers)
     try {
       const response = await chatWithFallback({
-        model: getAiSettings().model || appEnv.llmModel || 'nvidia/nemotron-3-ultra-550b-a55b:free',
+        model: getAiSettings().model,
         temperature: 0.2,
         maxTokens: report ? 800 : 500,
         messages: [
