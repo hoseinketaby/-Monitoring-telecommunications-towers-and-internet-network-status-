@@ -1,11 +1,14 @@
-import { X } from 'lucide-react'
+import { Play, X } from 'lucide-react'
+import { useState } from 'react'
 import { useMonitorStore } from '../../store'
+import { TowerSimulation } from '../TowerSimulation'
 import { WeatherBadge } from '../WeatherBadge'
 import { PowerSection } from './PowerSection'
 
 const statusLabel = { online: 'فعال', degraded: 'ناپایدار', offline: 'قطع' }
 
 export function TowerDetail() {
+  const [simulationOpen, setSimulationOpen] = useState(false)
   const tower = useMonitorStore((state) => state.towers.find((item) => item.id === state.selectedTowerId))
   const selectTower = useMonitorStore((state) => state.selectTower)
   if (!tower) return null
@@ -21,6 +24,10 @@ export function TowerDetail() {
         <WeatherBadge weather={tower.weather} />
       </div>
       <PowerSection tower={tower} />
+      <button onClick={() => setSimulationOpen(true)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-400 px-3 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-cyan-300">
+        <Play className="h-4 w-4 fill-current" /> شبیه‌سازی زندهٔ دکل
+      </button>
+      {simulationOpen && <TowerSimulation tower={tower} onClose={() => setSimulationOpen(false)} />}
     </aside>
   )
 }
