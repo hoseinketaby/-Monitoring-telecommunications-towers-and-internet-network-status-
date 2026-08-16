@@ -1,4 +1,3 @@
-import { getAiSettings } from '../config/runtime'
 import type { MapTool, NetworkLink, NetworkNode, TopologyAnalysis } from '../types'
 import { distanceKm, nodeProfiles, suggestedMedium, validateLink } from '../simulation/topology'
 import { chatWithFallback } from './providers'
@@ -7,7 +6,6 @@ export async function interpretTopologyWithAi(nodes: NetworkNode[], links: Netwo
   const fallback = [analysis.summary, ...analysis.issues.map((issue) => `• ${issue.message}`)].join('\n')
   try {
     const response = await chatWithFallback({
-      model: getAiSettings().model,
       temperature: 0.15,
       maxTokens: 450,
       messages: [
@@ -45,9 +43,8 @@ function parsePlan(content: string): AiTopologyPlan | null {
   }
 }
 
-export async function generateTopologyWithAi(prompt: string, model: string, center = { lat: 35.6892, lng: 51.389 }) {
+export async function generateTopologyWithAi(prompt: string, center = { lat: 35.6892, lng: 51.389 }) {
   const response = await chatWithFallback({
-    model,
     temperature: 0.25,
     maxTokens: 900,
     messages: [

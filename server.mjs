@@ -20,14 +20,8 @@ loadEnv()
 
 const port = Number(process.env.PORT || 8787)
 const distDir = join(process.cwd(), 'dist')
-const fallbackModels = [
-  'deepseek-chat',
-  'qwen3-235b-a22b',
-  'gemini-2.0-flash',
-  'gpt-4o-mini',
-  'grok-3-mini',
-  'claude-sonnet-4-20250514',
-]
+const gapGptBaseUrl = (process.env.GAPGPT_BASE_URL || 'https://api.gapgpt.app/v1').replace(/\/$/, '')
+const gapGptModel = process.env.GAPGPT_MODEL || 'gapgpt-qwen-3.5'
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -49,7 +43,7 @@ function requireApiKey(response) {
 }
 
 async function gapGpt(path, options = {}) {
-  return fetch(`https://api.gapgpt.app/v1${path}`, {
+  return fetch(`${gapGptBaseUrl}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${process.env.GAPGPT_API_KEY}`,
@@ -62,22 +56,6 @@ async function gapGpt(path, options = {}) {
 createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
 
-  if (url.pathname === '/api/ai/models' && request.method === 'GET') {
-    if (!requireApiKey(response)) return
-    try {
-      const upstream = await gapGpt('/models')
-      if (!upstream.ok) throw new Error(String(upstream.status))
-      const payload = await upstream.json()
-      const models = Array.isArray(payload.data)
-        ? payload.data.map((item) => item.id).filter((id) => typeof id === 'string')
-        : fallbackModels
-      sendJson(response, 200, { models: models.length ? models : fallbackModels })
-    } catch {
-      sendJson(response, 200, { models: fallbackModels })
-    }
-    return
-  }
-
   if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
     if (!requireApiKey(response)) return
     let body = ''
@@ -85,14 +63,14 @@ createServer(async (request, response) => {
     request.on('end', async () => {
       try {
         const input = JSON.parse(body)
-        if (!Array.isArray(input.messages) || typeof input.model !== 'string') {
-          sendJson(response, 400, { error: 'A model and messages are required.' })
+        if (!Array.isArray(input.messages)) {
+          sendJson(response, 400, { error: 'Messages are required.' })
           return
         }
         const upstream = await gapGpt('/chat/completions', {
           method: 'POST',
           body: JSON.stringify({
-            model: input.model,
+            model: gapGptModel,
             messages: input.messages,
             temperature: typeof input.temperature === 'number' ? input.temperature : 0.2,
             max_tokens: typeof input.maxTokens === 'number' ? input.maxTokens : 600,

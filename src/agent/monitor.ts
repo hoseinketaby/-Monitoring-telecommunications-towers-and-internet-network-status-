@@ -1,4 +1,3 @@
-import { getAiSettings } from '../config/runtime'
 import type { TowerState } from '../types'
 import { fallbackAnalysis } from './fallbackAnalysis'
 import { alertSystemPrompt, reportSystemPrompt } from './prompts'
@@ -48,7 +47,6 @@ export async function analyzeNetwork(towers: TowerState[], report = false): Prom
     const snapshot = createNetworkSnapshot(towers)
     try {
       const response = await chatWithFallback({
-        model: getAiSettings().model,
         temperature: 0.2,
         maxTokens: report ? 800 : 500,
         messages: [

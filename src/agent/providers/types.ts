@@ -8,7 +8,6 @@ export interface ChatMessage {
 export interface LLMProvider {
   name: ProviderName
   chat(params: {
-    model: string
     messages: ChatMessage[]
     temperature?: number
     maxTokens?: number

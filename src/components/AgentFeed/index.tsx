@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Bot, CheckCircle2, CloudLightning, PlugZap, TriangleAlert } from 'lucide-react'
 import { analyzeNetwork } from '../../agent/monitor'
 import { useMonitorStore } from '../../store'
-import { AiSettings } from './AiSettings'
 
 const icons = { 'power-outage': PlugZap, 'battery-critical': TriangleAlert, weather: CloudLightning, 'status-change': TriangleAlert, restored: CheckCircle2, summary: Bot }
 
@@ -29,7 +28,6 @@ export function AgentFeed() {
         </select>
         <button disabled={creatingReport} onClick={() => void createReport()} className="rounded border border-line px-2 py-1 text-xs hover:bg-slate-800 disabled:opacity-50">{creatingReport ? 'در حال تهیه…' : 'گزارش مدیریتی'}</button>
       </div>
-      <AiSettings />
       <div className="mt-4 max-h-[500px] space-y-3 overflow-auto">
         {visibleEvents.length === 0 && <p className="text-sm text-slate-400">رویدادی با این فیلتر وجود ندارد.</p>}
         {visibleEvents.map((event) => {

@@ -1,6 +1,5 @@
 import { Bot, CircleCheckBig, CircleX, Link2, Sparkles, TriangleAlert, WandSparkles } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { fallbackGapGptModels, getGapGptModels } from '../../agent/models'
+import { useState } from 'react'
 import { useMonitorStore } from '../../store'
 import { nodeProfiles } from '../../simulation/topology'
 
@@ -16,17 +15,8 @@ export function TopologyPanel() {
   const [interpreting, setInterpreting] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [models, setModels] = useState(fallbackGapGptModels)
-  const [model, setModel] = useState('deepseek-chat')
   const [generationError, setGenerationError] = useState('')
   const selected = nodes.find((node) => node.id === selectedNodeId)
-
-  useEffect(() => {
-    void getGapGptModels().then((items) => {
-      setModels(items)
-      setModel((current) => items.includes(current) ? current : items[0])
-    })
-  }, [])
 
   return (
     <section className="rounded-2xl border border-line bg-panel p-4">
@@ -45,14 +35,11 @@ export function TopologyPanel() {
         <div className="flex items-center gap-2 text-sm font-bold text-cyan-100"><WandSparkles className="h-4 w-4 text-cyan-300" />چینش توپولوژی با هوش مصنوعی</div>
         <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} dir="rtl" rows={3} placeholder="مثلاً برای پوشش سه سایت BTS در غرب تهران با بک‌هاول فیبر و لینک پشتیبان مایکروویو طراحی کن." className="mt-2 w-full resize-y rounded-lg border border-line bg-slate-950/70 px-3 py-2 text-xs leading-5 outline-none focus:border-cyan-500" />
         <div className="mt-2 flex gap-2">
-          <select dir="ltr" value={model} onChange={(event) => setModel(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-line bg-slate-900 px-2 py-2 text-xs outline-none focus:border-cyan-500">
-            {models.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
           <button disabled={generating || !prompt.trim()} onClick={async () => {
             setGenerating(true)
             setGenerationError('')
             try {
-              await generateTopology(prompt, model)
+              await generateTopology(prompt)
             } catch (error) {
               setGenerationError(error instanceof Error ? error.message : 'ساخت توپولوژی انجام نشد.')
             } finally {
