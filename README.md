@@ -16,7 +16,7 @@ npm run dev
 
 ```env
 GAPGPT_API_KEY=کلید-خصوصی-شما
-GAPGPT_DEFAULT_MODEL=deepseek-chat
+GAPGPT_MODEL=gapgpt-qwen-3.5
 ```
 
 برای توسعه، API امن و Vite را در دو ترمینال جدا اجرا کنید:
