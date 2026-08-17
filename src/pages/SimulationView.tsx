@@ -55,7 +55,7 @@ export function SimulationView() {
         <MousePointer2 className="h-4 w-4 text-cyan-300" />
         {target.type === 'tool' ? `در حال شبیه‌سازی: ${toolNames[target.tool]}` : `در حال شبیه‌سازی دکل: ${tower.name}`}
       </div>
-      <TowerSimulation tower={tower} embedded />
+      <TowerSimulation tower={tower} assetKind={target.type === 'tool' ? target.tool : 'tower'} embedded />
     </div>
   )
 }

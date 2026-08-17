@@ -9,7 +9,12 @@ import { TowerDetail } from '../TowerDetail'
 import 'leaflet/dist/leaflet.css'
 
 const markerIcon = (tower: TowerState) => L.divIcon({ className: 'tower-marker', html: `<div class="tower-dot ${tower.status}">${tower.status === 'offline' ? '×' : tower.isGridPowerActive ? '⚡' : Math.round(tower.batteryLevel)}</div>`, iconSize: [34, 34], iconAnchor: [17, 17] })
-const networkIcon = (node: NetworkNode, selected: boolean) => L.divIcon({ className: 'tower-marker', html: `<div class="network-dot ${node.kind} ${selected ? 'selected' : ''}">${node.kind === 'core' ? 'C' : node.kind === 'bts' ? 'B' : node.kind === 'fiber' ? 'F' : node.kind === 'microwave' ? 'M' : node.kind === 'router' ? 'R' : node.kind === 'power' ? 'P' : 'T'}</div>`, iconSize: [34, 34], iconAnchor: [17, 17] })
+const networkIcon = (node: NetworkNode, selected: boolean) => L.divIcon({
+  className: 'tower-marker',
+  html: `<div class="network-asset-icon ${node.kind} ${selected ? 'selected' : ''}" aria-label="${node.kind}"><span></span><i></i></div>`,
+  iconSize: [42, 42],
+  iconAnchor: [21, 21],
+})
 
 function DropTarget() {
   const map = useMap()

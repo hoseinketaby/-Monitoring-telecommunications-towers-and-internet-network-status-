@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import { Activity, CloudRain, CloudSun, Gauge, MapPinned, Radio, ThermometerSun, Wind, X, Zap } from 'lucide-react'
 import { useMonitorStore } from '../store'
-import type { TowerState } from '../types'
+import type { MapTool, TowerState } from '../types'
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -21,6 +21,55 @@ const simulationIcon = (active: boolean) => L.divIcon({
   iconSize: [24, 24],
   iconAnchor: [12, 12],
 })
+
+function AssetVisual({ kind }: { kind: MapTool }) {
+  if (kind === 'tower') {
+    return <div className="tower-visual" aria-hidden="true">
+      <div className="tower-beacon" />
+      <div className="tower-antenna antenna-left" />
+      <div className="tower-antenna antenna-right" />
+      <div className="tower-mast"><i /><i /><i /><i /></div>
+      <div className="tower-base" />
+    </div>
+  }
+
+  return (
+    <div className={`asset-visual asset-visual-${kind}`} aria-hidden="true">
+      {kind === 'bts' && <>
+        <div className="bts-cabinet"><i /><i /><i /></div>
+        <div className="bts-pole" />
+        <div className="bts-panel bts-panel-left" />
+        <div className="bts-panel bts-panel-right" />
+        <div className="asset-signal signal-one" /><div className="asset-signal signal-two" />
+      </>}
+      {kind === 'microwave' && <>
+        <div className="microwave-tower" />
+        <div className="microwave-dish dish-left" /><div className="microwave-dish dish-right" />
+        <div className="microwave-beam" />
+      </>}
+      {kind === 'fiber' && <>
+        <div className="fiber-reel"><i /><i /><i /></div>
+        <div className="fiber-cable"><i /><i /><i /><i /></div>
+        <div className="fiber-node" />
+      </>}
+      {kind === 'router' && <>
+        <div className="router-rack"><i /><i /><i /><i /></div>
+        <div className="router-ports">{Array.from({ length: 8 }, (_, index) => <i key={index} />)}</div>
+        <div className="router-signal signal-one" /><div className="router-signal signal-two" />
+      </>}
+      {kind === 'core' && <>
+        <div className="core-rack">{Array.from({ length: 5 }, (_, index) => <i key={index} />)}</div>
+        <div className="core-data data-one" /><div className="core-data data-two" /><div className="core-data data-three" />
+      </>}
+      {kind === 'power' && <>
+        <div className="power-generator"><i /><i /><i /></div>
+        <div className="power-battery"><i /></div>
+        <div className="power-bolt">⚡</div>
+        <div className="power-cable"><i /><i /><i /></div>
+      </>}
+    </div>
+  )
+}
 
 function CoverageMap({ tower }: { tower: TowerState }) {
   const towers = useMonitorStore((state) => state.towers)
@@ -62,7 +111,7 @@ const weatherClass = (tower: TowerState) => {
   return 'clear'
 }
 
-export function TowerSimulation({ tower, onClose, embedded = false }: { tower: TowerState; onClose?: () => void; embedded?: boolean }) {
+export function TowerSimulation({ tower, assetKind = 'tower', onClose, embedded = false }: { tower: TowerState; assetKind?: MapTool; onClose?: () => void; embedded?: boolean }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1_000)
@@ -103,13 +152,7 @@ export function TowerSimulation({ tower, onClose, embedded = false }: { tower: T
               <div className="simulation-waves wave-one" />
               <div className="simulation-waves wave-two" />
               <div className="simulation-ground" />
-              <div className="tower-visual" aria-hidden="true">
-                <div className="tower-beacon" />
-                <div className="tower-antenna antenna-left" />
-                <div className="tower-antenna antenna-right" />
-                <div className="tower-mast"><i /><i /><i /><i /></div>
-                <div className="tower-base" />
-              </div>
+              <AssetVisual kind={assetKind} />
               <div className="simulation-live-label"><span className="live-dot" /> LIVE · {new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now)}</div>
             </div>
             <div className="simulation-stage-footer">
