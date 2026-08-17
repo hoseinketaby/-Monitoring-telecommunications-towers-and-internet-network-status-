@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Local environment files may contain API keys or database credentials.
 .env
-.env.local
+.env.*
+!.env.example
 .vercel/
