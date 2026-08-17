@@ -7,6 +7,7 @@ export type AppPage = 'dashboard' | 'map' | 'simulation'
 export type SimulationTarget =
   | { type: 'tower'; towerId: string }
   | { type: 'tool'; tool: MapTool }
+  | { type: 'node'; nodeId: string }
 
 export interface NetworkNode {
   id: string

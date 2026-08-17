@@ -25,10 +25,12 @@ const toolMetrics: Record<MapTool, Pick<TowerState, 'signalStrength' | 'bandwidt
 
 export function SimulationView() {
   const towers = useMonitorStore((state) => state.towers)
+  const nodes = useMonitorStore((state) => state.networkNodes)
   const target = useMonitorStore((state) => state.simulationTarget)
   const baseTower = towers[0]
+  const targetNode = target?.type === 'node' ? nodes.find((node) => node.id === target.nodeId) : null
 
-  if (!target || !baseTower) {
+  if (!target || !baseTower || (target.type === 'node' && !targetNode)) {
     return (
       <section dir="rtl" className="flex min-h-[520px] flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-panel p-8 text-center">
         <Box className="mb-3 h-10 w-10 text-cyan-300" />
@@ -38,24 +40,30 @@ export function SimulationView() {
     )
   }
 
+  const selectedNode = targetNode!
+  const tool: MapTool = target.type === 'tool' ? target.tool : target.type === 'node' ? selectedNode.kind : 'tower'
   const tower = target.type === 'tower'
     ? towers.find((item) => item.id === target.towerId) ?? baseTower
     : {
         ...baseTower,
-        ...toolMetrics[target.tool],
-        id: `simulation-${target.tool}`,
-        name: `شبیه‌سازی ${toolNames[target.tool]}`,
-        region: 'محیط آزمایشی',
-        connectedUsers: target.tool === 'core' ? 42_000 : target.tool === 'bts' ? 1_800 : baseTower.connectedUsers,
+        ...toolMetrics[tool],
+        id: target.type === 'node' ? selectedNode.id : `simulation-${tool}`,
+        name: target.type === 'node' ? selectedNode.name : `شبیه‌سازی ${toolNames[tool]}`,
+        lat: target.type === 'node' ? selectedNode.lat : baseTower.lat,
+        lng: target.type === 'node' ? selectedNode.lng : baseTower.lng,
+        status: target.type === 'node' ? selectedNode.status : baseTower.status,
+        region: target.type === 'node' ? 'تجهیز قرارگرفته روی نقشه' : 'محیط آزمایشی',
+        bandwidthUsageMbps: target.type === 'node' ? Math.round(selectedNode.capacityMbps * 0.62) : toolMetrics[tool].bandwidthUsageMbps,
+        connectedUsers: tool === 'core' ? 42_000 : tool === 'bts' ? 1_800 : baseTower.connectedUsers,
       }
 
   return (
     <div className="space-y-3">
       <div dir="rtl" className="flex flex-wrap items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-950/20 px-4 py-3 text-sm text-cyan-50">
         <MousePointer2 className="h-4 w-4 text-cyan-300" />
-        {target.type === 'tool' ? `در حال شبیه‌سازی: ${toolNames[target.tool]}` : `در حال شبیه‌سازی دکل: ${tower.name}`}
+        {target.type === 'tower' ? `در حال شبیه‌سازی دکل: ${tower.name}` : `در حال شبیه‌سازی: ${tower.name}`}
       </div>
-      <TowerSimulation tower={tower} assetKind={target.type === 'tool' ? target.tool : 'tower'} embedded />
+      <TowerSimulation tower={tower} assetKind={tool} embedded />
     </div>
   )
 }

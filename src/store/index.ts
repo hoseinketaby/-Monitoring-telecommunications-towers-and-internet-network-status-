@@ -28,6 +28,7 @@ interface MonitorStore {
   setActivePage: (page: AppPage) => void
   openTowerSimulation: (towerId: string) => void
   openToolSimulation: (tool: MapTool) => void
+  openNodeSimulation: (nodeId: string) => void
   selectNode: (nodeId: string | null) => void
   addEvent: (event: Omit<MonitorEvent, 'id' | 'timestamp'>) => void
   addMapAsset: (tool: MapTool, lat: number, lng: number) => void
@@ -98,6 +99,7 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
   setActivePage: (page) => set({ activePage: page }),
   openTowerSimulation: (towerId) => set({ simulationTarget: { type: 'tower', towerId }, activePage: 'simulation' }),
   openToolSimulation: (tool) => set({ simulationTarget: { type: 'tool', tool }, activePage: 'simulation' }),
+  openNodeSimulation: (nodeId) => set({ simulationTarget: { type: 'node', nodeId }, activePage: 'simulation' }),
   selectNode: (nodeId) => set({ selectedNodeId: nodeId, selectedTowerId: null }),
   addEvent: (event) => set((state) => ({ events: [makeEvent(event), ...state.events].slice(0, 100) })),
   addMapAsset: (tool, lat, lng) => {
