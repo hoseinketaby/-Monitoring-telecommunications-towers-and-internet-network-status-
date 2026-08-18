@@ -1,5 +1,6 @@
 import L from 'leaflet'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent, WheelEvent } from 'react'
 import { Circle, MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet'
 import { Activity, CloudRain, CloudSun, Gauge, MapPinned, Radio, ThermometerSun, Wind, X, Zap } from 'lucide-react'
 import { useMonitorStore } from '../store'
@@ -67,6 +68,52 @@ function AssetVisual({ kind }: { kind: MapTool }) {
         <div className="power-bolt">⚡</div>
         <div className="power-cable"><i /><i /><i /></div>
       </>}
+    </div>
+  )
+}
+
+function Equipment3DViewer({ kind, label }: { kind: MapTool; label: string }) {
+  const [rotation, setRotation] = useState({ x: -8, y: -24 })
+  const [zoom, setZoom] = useState(1)
+  const dragRef = useRef<{ x: number; y: number; rx: number; ry: number } | null>(null)
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = { x: event.clientX, y: event.clientY, rx: rotation.x, ry: rotation.y }
+  }
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current
+    if (!drag) return
+    setRotation({ x: clamp(drag.rx - (event.clientY - drag.y) * 0.35, -55, 35), y: drag.ry + (event.clientX - drag.x) * 0.45 })
+  }
+  const stopDragging = () => { dragRef.current = null }
+  const onWheel = (event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setZoom((value) => clamp(value - event.deltaY * 0.0008, 0.72, 1.35))
+  }
+  const reset = () => { setRotation({ x: -8, y: -24 }); setZoom(1) }
+
+  return (
+    <div className="equipment-viewer" aria-label={`نمای سه‌بعدی ${label}`}>
+      <div
+        className="equipment-viewer-canvas"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={stopDragging}
+        onPointerCancel={stopDragging}
+        onWheel={onWheel}
+        style={{ ['--equipment-transform' as string]: `translateZ(0) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale(${zoom})` }}
+      >
+        <div className="equipment-platform equipment-platform-back" />
+        <div className="equipment-platform equipment-platform-front" />
+        <div className="equipment-model">
+          <AssetVisual kind={kind} />
+        </div>
+      </div>
+      <div className="equipment-viewer-controls">
+        <span>برای چرخش، ماوس را بکشید · چرخ ماوس: بزرگ‌نمایی</span>
+        <button type="button" onClick={reset}>بازنشانی زاویه</button>
+      </div>
     </div>
   )
 }
@@ -152,7 +199,7 @@ export function TowerSimulation({ tower, assetKind = 'tower', onClose, embedded 
               <div className="simulation-waves wave-one" />
               <div className="simulation-waves wave-two" />
               <div className="simulation-ground" />
-              <AssetVisual kind={assetKind} />
+              <Equipment3DViewer kind={assetKind} label={tower.name} />
               <div className="simulation-live-label"><span className="live-dot" /> LIVE · {new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now)}</div>
             </div>
             <div className="simulation-stage-footer">
