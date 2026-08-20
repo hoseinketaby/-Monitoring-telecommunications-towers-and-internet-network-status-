@@ -20,8 +20,8 @@ loadEnv()
 
 const port = Number(process.env.PORT || 8787)
 const distDir = join(process.cwd(), 'dist')
-const gapGptBaseUrl = (process.env.GAPGPT_BASE_URL || 'https://api.gapgpt.app/v1').replace(/\/$/, '')
-const gapGptModel = process.env.GAPGPT_MODEL || 'gapgpt-qwen-3.5'
+const openRouterBaseUrl = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')
+const openRouterModel = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini'
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -37,17 +37,19 @@ function sendJson(response, status, body) {
 }
 
 function requireApiKey(response) {
-  if (process.env.GAPGPT_API_KEY) return true
-  sendJson(response, 503, { error: 'GAPGPT_API_KEY is not configured on the server.' })
+  if (process.env.OPENROUTER_API_KEY) return true
+  sendJson(response, 503, { error: 'OPENROUTER_API_KEY is not configured on the server.' })
   return false
 }
 
-async function gapGpt(path, options = {}) {
-  return fetch(`${gapGptBaseUrl}${path}`, {
+async function openRouter(path, options = {}) {
+  return fetch(`${openRouterBaseUrl}${path}`, {
     ...options,
     headers: {
-      Authorization: `Bearer ${process.env.GAPGPT_API_KEY}`,
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
+      ...(process.env.OPENROUTER_HTTP_REFERER ? { 'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER } : {}),
+      ...(process.env.OPENROUTER_X_TITLE ? { 'X-Title': process.env.OPENROUTER_X_TITLE } : {}),
       ...(options.headers || {}),
     },
   })
@@ -67,10 +69,10 @@ createServer(async (request, response) => {
           sendJson(response, 400, { error: 'Messages are required.' })
           return
         }
-        const upstream = await gapGpt('/chat/completions', {
+        const upstream = await openRouter('/chat/completions', {
           method: 'POST',
           body: JSON.stringify({
-            model: gapGptModel,
+            model: openRouterModel,
             messages: input.messages,
             temperature: typeof input.temperature === 'number' ? input.temperature : 0.2,
             max_tokens: typeof input.maxTokens === 'number' ? input.maxTokens : 600,
@@ -78,7 +80,7 @@ createServer(async (request, response) => {
         })
         const payload = await upstream.json()
         if (!upstream.ok) {
-          sendJson(response, upstream.status, { error: payload.error?.message || 'GapGPT request failed.' })
+          sendJson(response, upstream.status, { error: payload.error?.message || 'OpenRouter request failed.' })
           return
         }
         sendJson(response, 200, { content: payload.choices?.[0]?.message?.content || '' })

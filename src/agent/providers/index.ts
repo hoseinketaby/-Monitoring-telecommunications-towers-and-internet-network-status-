@@ -7,6 +7,6 @@ export async function chatWithFallback(params: Parameters<LLMProvider['chat']>[0
     body: JSON.stringify(params),
   })
   const payload = await response.json()
-  if (!response.ok) throw new Error(payload.error || 'GapGPT request failed')
-  return { content: payload.content || '', provider: 'gapgpt' as const }
+  if (!response.ok) throw new Error(payload.error || 'OpenRouter request failed')
+  return { content: payload.content || '', provider: 'openrouter' as const }
 }

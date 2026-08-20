@@ -1,4 +1,4 @@
-export type ProviderName = 'gapgpt'
+export type ProviderName = 'openrouter'
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant'
