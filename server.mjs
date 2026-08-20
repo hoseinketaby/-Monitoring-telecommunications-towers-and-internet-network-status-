@@ -3,16 +3,18 @@ import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
 
 function loadEnv() {
-  const file = join(process.cwd(), '.env')
-  if (!existsSync(file)) return
-  for (const rawLine of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
-    const separator = line.indexOf('=')
-    if (separator < 1) continue
-    const key = line.slice(0, separator).trim()
-    const value = line.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '')
-    if (!process.env[key]) process.env[key] = value
+  for (const filename of ['.env.local', '.env']) {
+    const file = join(process.cwd(), filename)
+    if (!existsSync(file)) continue
+    for (const rawLine of readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const line = rawLine.trim()
+      if (!line || line.startsWith('#')) continue
+      const separator = line.indexOf('=')
+      if (separator < 1) continue
+      const key = line.slice(0, separator).trim()
+      const value = line.slice(separator + 1).trim().replace(/^['"]|['"]$/g, '')
+      if (!process.env[key]) process.env[key] = value
+    }
   }
 }
 
