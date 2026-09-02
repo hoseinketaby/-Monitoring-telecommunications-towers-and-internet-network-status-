@@ -158,12 +158,19 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
     if (!text) throw new Error('لطفاً نیازمندی توپولوژی را بنویسید.')
     const result = await generateTopologyWithAi(text)
     const analysis = analyzeTopology(result.nodes, result.links)
+    const actionSummary = [
+      'چیدمان هوشمند برای درخواست شما ایجاد شد.',
+      `تعداد ${result.nodes.length} عنصر روی نقشه قرار گرفت.`,
+      `${result.links.length} مسیر ارتباطی بین عناصر ساخته شد.`,
+      `مدار برق با ${result.nodes.filter((node) => node.kind === 'power').length} منبع برق روی نقشه نمایش داده شد.`,
+    ].join('\n')
     set({
       networkNodes: result.nodes,
       networkLinks: result.links,
       selectedNodeId: null,
       topologyAnalysis: analysis,
-      topologyAiAdvice: 'چینش پیشنهادی با هوش مصنوعی ایجاد شد. قبل از اجرای واقعی، ظرفیت، مسیر و مجوزها را بررسی کنید.',
+      topologyAiAdvice: actionSummary,
     })
+    get().addEvent({ type: 'summary', message: 'گزارش اجرای چیدمان هوشمند روی نقشه', analysis: actionSummary })
   },
 }))

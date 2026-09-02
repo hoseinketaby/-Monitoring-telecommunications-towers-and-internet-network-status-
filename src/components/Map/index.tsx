@@ -86,10 +86,19 @@ export function TowerMap({ showDropHint = false }: { showDropHint?: boolean }) {
           return from && to ? <Polyline key={link.id} positions={[[from.lat, from.lng], [to.lat, to.lng]]} pathOptions={{ color: link.medium === 'fiber' ? '#38bdf8' : link.medium === 'microwave' ? '#fbbf24' : '#a78bfa', weight: 4, dashArray: link.medium === 'microwave' ? '8 7' : undefined }} /> : null
         })}
         {powerNodes.flatMap((power) => poweredAssets
-          .map((asset) => ({ power, asset, distance: Math.hypot(power.lat - asset.lat, power.lng - asset.lng) }))
-          .sort((a, b) => a.distance - b.distance)
-          .slice(0, poweredAssets.length ? 1 : 0)
-          .map(({ power, asset }) => <Polyline key={`power-${power.id}-${asset.id}`} positions={[[power.lat, power.lng], [asset.lat, asset.lng]]} pathOptions={{ color: '#fde047', weight: 4, opacity: 0.95, dashArray: '3 6', className: 'power-wiring' }} />))}
+          .filter((asset) => asset.id !== power.id)
+          .map((asset) => (
+            <Polyline
+              key={`power-${power.id}-${asset.id}`}
+              positions={[[power.lat, power.lng], [asset.lat, asset.lng]]}
+              pathOptions={{
+                color: '#38bdf8',
+                weight: 4,
+                opacity: 0.95,
+                className: 'power-wiring',
+              }}
+            />
+          )))}
         {towers.map((tower) => (
           <Marker
             key={tower.id}
