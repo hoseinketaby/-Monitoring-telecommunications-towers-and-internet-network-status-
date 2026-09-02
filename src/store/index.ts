@@ -6,11 +6,12 @@ import { getActiveDataSource, getTowerData, isLiveDataSource } from '../data/tow
 import { simulateNetwork } from '../simulation/engine'
 import { analyzeTopology, distanceKm, nodeProfiles, suggestedMedium, validateLink } from '../simulation/topology'
 import { attachWeather } from '../weather/api'
-import type { AppPage, DataSource, MapTool, MonitorEvent, NetworkLink, NetworkNode, SimulationTarget, TowerState, TopologyAnalysis } from '../types'
+import type { AppPage, DataSource, MapTool, MonitorEvent, NetworkLink, NetworkLog, NetworkNode, SimulationTarget, TowerState, TopologyAnalysis } from '../types'
 
 interface MonitorStore {
   towers: TowerState[]
   events: MonitorEvent[]
+  networkLogs: NetworkLog[]
   selectedTowerId: string | null
   activePage: AppPage
   simulationTarget: SimulationTarget | null
@@ -31,6 +32,8 @@ interface MonitorStore {
   openNodeSimulation: (nodeId: string) => void
   selectNode: (nodeId: string | null) => void
   addEvent: (event: Omit<MonitorEvent, 'id' | 'timestamp'>) => void
+  addNetworkLog: (log: Omit<NetworkLog, 'id' | 'timestamp'>) => void
+  clearNetworkLogs: () => void
   addMapAsset: (tool: MapTool, lat: number, lng: number) => void
   updateMapAssetPosition: (nodeId: string, lat: number, lng: number) => void
   removeMapAsset: (nodeId: string) => void
@@ -58,7 +61,7 @@ const collectTransitions = (current: TowerState[], previous: Map<string, TowerSt
 }
 
 export const useMonitorStore = create<MonitorStore>((set, get) => ({
-  towers: [], events: [], selectedTowerId: null, activePage: 'dashboard', simulationTarget: null, dataSource: 'mock', loading: true, lastRefresh: null,
+  towers: [], events: [], networkLogs: [], selectedTowerId: null, activePage: 'dashboard', simulationTarget: null, dataSource: 'mock', loading: true, lastRefresh: null,
   networkNodes: [], networkLinks: [], selectedNodeId: null, topologyAnalysis: null, topologyAiAdvice: null,
   initialize: async () => {
     await get().refresh()
@@ -87,7 +90,14 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
         .map((tower) => ({ type: tower.batteryLevel < 20 ? ('battery-critical' as const) : ('status-change' as const), towerId: tower.id, message: `هشدار اولیه برای ${tower.name}` })) : []
       previousTowers = new Map(towers.map((tower) => [tower.id, tower]))
       const newEvents = [...transitions, ...initialWarnings].map(makeEvent)
-      set((state) => ({ towers, dataSource: source, loading: false, lastRefresh: new Date().toISOString(), events: [...newEvents, ...state.events].slice(0, 100) }))
+      set((state) => ({
+        towers, dataSource: source, loading: false, lastRefresh: new Date().toISOString(),
+        events: [...newEvents, ...state.events].slice(0, 100),
+        networkLogs: [
+          ...newEvents.map((event) => ({ id: event.id, timestamp: event.timestamp, level: event.type === 'battery-critical' || event.type === 'power-outage' ? 'warning' as const : 'info' as const, source: 'monitor', message: event.message })),
+          ...state.networkLogs,
+        ].slice(0, 300),
+      }))
       if (newEvents.some((event) => event.type !== 'restored')) {
         const analysis = await analyzeNetwork(towers)
         set((state) => ({ events: state.events.map((event) => newEvents.some((newEvent) => newEvent.id === event.id) ? { ...event, analysis } : event) }))
@@ -104,6 +114,8 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
   openNodeSimulation: (nodeId) => set({ simulationTarget: { type: 'node', nodeId }, activePage: 'simulation' }),
   selectNode: (nodeId) => set({ selectedNodeId: nodeId, selectedTowerId: null }),
   addEvent: (event) => set((state) => ({ events: [makeEvent(event), ...state.events].slice(0, 100) })),
+  addNetworkLog: (log) => set((state) => ({ networkLogs: [{ ...log, id: crypto.randomUUID(), timestamp: new Date().toISOString() }, ...state.networkLogs].slice(0, 300) })),
+  clearNetworkLogs: () => set({ networkLogs: [] }),
   addMapAsset: (tool, lat, lng) => {
     const profile = nodeProfiles[tool]
     const node: NetworkNode = {

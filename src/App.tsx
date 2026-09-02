@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { Activity, LayoutDashboard, Map, RefreshCw, RadioTower } from 'lucide-react'
+import { Activity, LayoutDashboard, Map, RefreshCw, RadioTower, ScrollText } from 'lucide-react'
 import { Dashboard } from './pages/Dashboard'
 import { MapView } from './pages/MapView'
 import { SimulationView } from './pages/SimulationView'
+import { NetworkLogs } from './pages/NetworkLogs'
 import { useMonitorStore } from './store'
 import type { DataSource } from './types'
 
@@ -34,12 +35,13 @@ export default function App() {
             <button onClick={() => setActivePage('dashboard')} className={`inline-flex items-center gap-2 rounded px-3 py-1.5 ${page === 'dashboard' ? 'bg-slate-700' : 'text-slate-400'}`}><LayoutDashboard className="h-4 w-4" /> داشبورد</button>
             <button onClick={() => setActivePage('map')} className={`inline-flex items-center gap-2 rounded px-3 py-1.5 ${page === 'map' ? 'bg-slate-700' : 'text-slate-400'}`}><Map className="h-4 w-4" /> نقشه و هشدارها</button>
             <button onClick={() => setActivePage('simulation')} className={`inline-flex items-center gap-2 rounded px-3 py-1.5 ${page === 'simulation' ? 'bg-cyan-700 text-white' : 'text-slate-400'}`}><Activity className="h-4 w-4" /> شبیه‌ساز ابزار</button>
+            <button onClick={() => setActivePage('network-logs')} className={`inline-flex items-center gap-2 rounded px-3 py-1.5 ${page === 'network-logs' ? 'bg-emerald-700 text-white' : 'text-slate-400'}`}><ScrollText className="h-4 w-4" /> لاگ شبکه</button>
           </nav>
           <button onClick={() => void refresh()} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm hover:bg-slate-800 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> به‌روزرسانی</button>
           {lastRefresh && <span className="text-xs text-slate-500">آخرین به‌روزرسانی: {new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit' }).format(new Date(lastRefresh))}</span>}
         </div>
       </header>
-      <div className="mx-auto max-w-[1600px] p-4">{page === 'dashboard' ? <Dashboard /> : page === 'map' ? <MapView /> : <SimulationView />}</div>
+      <div className="mx-auto max-w-[1600px] p-4">{page === 'dashboard' ? <Dashboard /> : page === 'map' ? <MapView /> : page === 'simulation' ? <SimulationView /> : <NetworkLogs />}</div>
     </main>
   )
 }
