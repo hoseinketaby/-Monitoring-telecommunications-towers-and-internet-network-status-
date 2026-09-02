@@ -62,6 +62,8 @@ export function TowerMap({ showDropHint = false }: { showDropHint?: boolean }) {
   const openNodeSimulation = useMonitorStore((state) => state.openNodeSimulation)
   const updateMapAssetPosition = useMonitorStore((state) => state.updateMapAssetPosition)
   const removeMapAsset = useMonitorStore((state) => state.removeMapAsset)
+  const powerNodes = nodes.filter((node) => node.kind === 'power')
+  const poweredAssets = [...towers.map((tower) => ({ id: tower.id, lat: tower.lat, lng: tower.lng })), ...nodes.filter((node) => node.kind !== 'power')]
 
   const nodeClick = (id: string) => {
     if (selectedNodeId && selectedNodeId !== id) {
@@ -83,6 +85,11 @@ export function TowerMap({ showDropHint = false }: { showDropHint?: boolean }) {
           const to = nodes.find((node) => node.id === link.toId)
           return from && to ? <Polyline key={link.id} positions={[[from.lat, from.lng], [to.lat, to.lng]]} pathOptions={{ color: link.medium === 'fiber' ? '#38bdf8' : link.medium === 'microwave' ? '#fbbf24' : '#a78bfa', weight: 4, dashArray: link.medium === 'microwave' ? '8 7' : undefined }} /> : null
         })}
+        {powerNodes.flatMap((power) => poweredAssets
+          .map((asset) => ({ power, asset, distance: Math.hypot(power.lat - asset.lat, power.lng - asset.lng) }))
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, poweredAssets.length ? 1 : 0)
+          .map(({ power, asset }) => <Polyline key={`power-${power.id}-${asset.id}`} positions={[[power.lat, power.lng], [asset.lat, asset.lng]]} pathOptions={{ color: '#fde047', weight: 4, opacity: 0.95, dashArray: '3 6', className: 'power-wiring' }} />))}
         {towers.map((tower) => (
           <Marker
             key={tower.id}

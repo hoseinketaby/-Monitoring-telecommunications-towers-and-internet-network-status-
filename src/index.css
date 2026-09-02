@@ -7,6 +7,7 @@ body { margin: 0; min-width: 320px; background: #0b1017; font-family: Vazirmatn,
 button { font: inherit; }
 .leaflet-container { background: #172235; font-family: Vazirmatn, Tahoma, Arial, sans-serif; }
 .tower-marker { background: transparent; border: 0; }
+.power-wiring { filter: drop-shadow(0 0 5px #facc15); }
 .tower-dot { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid #e2e8f0; border-radius: 999px; color: #0f172a; background: #34d399; box-shadow: 0 0 0 5px rgba(52, 211, 153, .18); font-weight: 800; font-size: 13px; }
 .tower-dot.degraded { background: #fbbf24; box-shadow: 0 0 0 5px rgba(251, 191, 36, .18); }
 .tower-dot.offline { background: #fb7185; color: white; box-shadow: 0 0 0 5px rgba(251, 113, 133, .18); }
