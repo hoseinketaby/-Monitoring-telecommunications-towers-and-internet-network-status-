@@ -22,7 +22,15 @@ export default async function handler(request, response) {
       },
       body: JSON.stringify({ model, messages, temperature: typeof temperature === 'number' ? temperature : 0.2, max_tokens: typeof maxTokens === 'number' ? maxTokens : 600 }),
     })
-    const payload = await upstream.json()
+    const raw = await upstream.text()
+    let payload = {}
+    if (raw.trim()) {
+      try {
+        payload = JSON.parse(raw)
+      } catch {
+        return response.status(502).json({ error: `OpenRouter returned a non-JSON response (HTTP ${upstream.status}).` })
+      }
+    }
     if (!upstream.ok) return response.status(upstream.status).json({ error: payload.error?.message || 'OpenRouter request failed.' })
     return response.status(200).json({ content: payload.choices?.[0]?.message?.content || '' })
   } catch {

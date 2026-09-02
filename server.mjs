@@ -57,6 +57,16 @@ async function openRouter(path, options = {}) {
   })
 }
 
+async function readJson(response) {
+  const raw = await response.text()
+  if (!raw.trim()) return {}
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return { error: `OpenRouter returned a non-JSON response (HTTP ${response.status}).` }
+  }
+}
+
 createServer(async (request, response) => {
   const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`)
 
@@ -80,7 +90,7 @@ createServer(async (request, response) => {
             max_tokens: typeof input.maxTokens === 'number' ? input.maxTokens : 600,
           }),
         })
-        const payload = await upstream.json()
+        const payload = await readJson(upstream)
         if (!upstream.ok) {
           sendJson(response, upstream.status, { error: payload.error?.message || 'OpenRouter request failed.' })
           return

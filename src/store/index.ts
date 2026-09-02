@@ -32,6 +32,8 @@ interface MonitorStore {
   selectNode: (nodeId: string | null) => void
   addEvent: (event: Omit<MonitorEvent, 'id' | 'timestamp'>) => void
   addMapAsset: (tool: MapTool, lat: number, lng: number) => void
+  updateMapAssetPosition: (nodeId: string, lat: number, lng: number) => void
+  removeMapAsset: (nodeId: string) => void
   connectNodes: (fromId: string, toId: string) => { ok: boolean; message: string }
   analyzeTopology: () => TopologyAnalysis
   interpretTopology: () => Promise<void>
@@ -111,6 +113,20 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
     }
     set((state) => ({ networkNodes: [...state.networkNodes, node], selectedNodeId: node.id, topologyAnalysis: null, topologyAiAdvice: null }))
   },
+  updateMapAssetPosition: (nodeId, lat, lng) => set((state) => ({
+    towers: state.towers.map((tower) => tower.id === nodeId ? { ...tower, lat, lng } : tower),
+    networkNodes: state.networkNodes.map((node) => node.id === nodeId ? { ...node, lat, lng } : node),
+    topologyAnalysis: null,
+    topologyAiAdvice: null,
+  })),
+  removeMapAsset: (nodeId) => set((state) => ({
+    towers: state.towers.filter((tower) => tower.id !== nodeId),
+    networkNodes: state.networkNodes.filter((node) => node.id !== nodeId),
+    networkLinks: state.networkLinks.filter((link) => link.fromId !== nodeId && link.toId !== nodeId),
+    selectedNodeId: state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+    topologyAnalysis: null,
+    topologyAiAdvice: null,
+  })),
   connectNodes: (fromId, toId) => {
     const { networkNodes, networkLinks } = get()
     const from = networkNodes.find((node) => node.id === fromId)
