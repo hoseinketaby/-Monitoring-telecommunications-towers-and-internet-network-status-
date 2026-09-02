@@ -202,6 +202,22 @@ export function TowerSimulation({ tower, assetKind = 'tower', onClose, embedded 
               <Equipment3DViewer kind={assetKind} label={tower.name} />
               <div className="simulation-live-label"><span className="live-dot" /> LIVE · {new Intl.DateTimeFormat('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now)}</div>
             </div>
+            {assetKind === 'power' && (
+              <div className="generator-consumption" aria-label="مصرف برق تجهیزات از ژنراتور">
+                <div className="generator-consumption-heading">
+                  <span>مصرف برق از ژنراتور</span>
+                  <b>جمع کل: ۱٬۵۹۵ وات</b>
+                </div>
+                <div className="generator-consumption-grid">
+                  <span><i className="consumption-dot dot-bts" /> BTS سایت <b>۸۵۰ وات</b></span>
+                  <span><i className="consumption-dot dot-microwave" /> لینک مایکروویو <b>۱۲۰ وات</b></span>
+                  <span><i className="consumption-dot dot-router" /> روتر و سوئیچ <b>۸۰ وات</b></span>
+                  <span><i className="consumption-dot dot-core" /> هسته شبکه <b>۴۵۰ وات</b></span>
+                  <span><i className="consumption-dot dot-fiber" /> تجهیزات فیبر <b>۳۵ وات</b></span>
+                  <span><i className="consumption-dot dot-light" /> روشنایی و متعلقات <b>۶۰ وات</b></span>
+                </div>
+              </div>
+            )}
             <div className="simulation-stage-footer">
               <span><CloudSun className="h-4 w-4 text-amber-300" /> {tower.weather.condition}</span>
               <span><ThermometerSun className="h-4 w-4 text-rose-300" /> {tower.weather.temperature.toFixed(1)}°C</span>
