@@ -1,0 +1,24 @@
+{
+  "name": "Telecom Tower Report to Telegram",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "telecom-towers/report", "responseMode": "lastNode", "options": {} },
+      "id": "webhook", "name": "Receive tower report", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [260, 300]
+    },
+    {
+      "parameters": { "jsCode": "const body = $json.body ?? $json; const towers = Array.isArray(body.towers) ? body.towers : []; const score = t => Number(t.healthScore ?? 0); const critical = towers.filter(t => score(t) < 55); const attention = towers.filter(t => score(t) >= 55 && score(t) < 80); const healthy = towers.filter(t => score(t) >= 80); const lines = [`📡 Telecom Tower Report`, `🕒 ${body.generatedAt || new Date().toISOString()}`, `📊 Total: ${towers.length}`, `✅ Healthy: ${healthy.length}`, `⚠️ Attention: ${attention.length}`, `🚨 Critical: ${critical.length}`, '', ...critical.slice(0, 10).map(t => `🚨 ${t.name}: ${score(t)}/100 | ${t.status} | battery ${Math.round(t.batteryLevel ?? 0)}%`)]; return [{ json: { telegramText: lines.join('\\\\n') } }];" },
+      "id": "prepare", "name": "Prepare Telegram summary", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [520, 300]
+    },
+    {
+      "parameters": { "chatId": "REPLACE_WITH_CHAT_ID", "text": "={{$json.telegramText}}", "additionalFields": {} },
+      "id": "telegram", "name": "Send to Telegram", "type": "n8n-nodes-base.telegram", "typeVersion": 1.2, "position": [780, 300], "credentials": { "telegramApi": { "id": "REPLACE_WITH_CREDENTIAL_ID", "name": "Telegram bot" } }
+    },
+    {
+      "parameters": { "respondWith": "json", "responseBody": "={{ { ok: true, delivered: true, towerCount: $json.telegramText } }}" },
+      "id": "respond", "name": "Webhook response", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1.1, "position": [1040, 300]
+    }
+  ],
+  "connections": { "Receive tower report": { "main": [[{ "node": "Prepare Telegram summary", "type": "main", "index": 0 }]] }, "Prepare Telegram summary": { "main": [[{ "node": "Send to Telegram", "type": "main", "index": 0 }]] }, "Send to Telegram": { "main": [[{ "node": "Webhook response", "type": "main", "index": 0 }]] } },
+  "active": false,
+  "settings": {}, "versionId": "1"
+}

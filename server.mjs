@@ -193,6 +193,22 @@ createServer(async (request, response) => {
     return
   }
 
+  if (url.pathname === '/api/quickchart' && request.method === 'POST') {
+    let body = ''
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', async () => {
+      try {
+        const input = JSON.parse(body)
+        if (!input?.chart) return sendJson(response, 400, { error: 'Chart configuration is required.' })
+        const upstream = await fetch('https://quickchart.io/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chart: input.chart, width: input.width || 1100, height: input.height || 520, format: input.format || 'png', backgroundColor: '#0f172a' }) })
+        const buffer = Buffer.from(await upstream.arrayBuffer())
+        response.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'image/png', 'Cache-Control': 'no-store' })
+        response.end(buffer)
+      } catch { sendJson(response, 502, { error: 'QuickChart request failed.' }) }
+    })
+    return
+  }
+
   const safePath = normalize(url.pathname).replace(/^(\.\.(\/|\\|$))+/, '')
   const requestedFile = join(distDir, safePath === '/' ? 'index.html' : safePath)
   const file = existsSync(requestedFile) ? requestedFile : join(distDir, 'index.html')
