@@ -2,11 +2,13 @@ import { create } from 'zustand'
 import { analyzeNetwork } from '../agent/monitor'
 import { generateTopologyWithAi, interpretTopologyWithAi } from '../agent/topology'
 import { appEnv } from '../config/env'
+import { fetchHistory, postHistorySnapshot, saveTelegramAutoAlerts, sendTelegramAlert } from '../data/historyClient'
 import { getActiveDataSource, getTowerData, isLiveDataSource } from '../data/towerDataSource'
 import { simulateNetwork } from '../simulation/engine'
 import { analyzeTopology, distanceKm, nodeProfiles, suggestedMedium, validateLink } from '../simulation/topology'
 import { attachWeather } from '../weather/api'
 import type { AppPage, DataSource, MapTool, MonitorEvent, NetworkLink, NetworkLog, NetworkNode, SimulationTarget, TowerState, TopologyAnalysis } from '../types'
+import type { HistorySnapshot } from '../utils/prediction'
 
 interface MonitorStore {
   towers: TowerState[]
@@ -23,6 +25,8 @@ interface MonitorStore {
   selectedNodeId: string | null
   topologyAnalysis: TopologyAnalysis | null
   topologyAiAdvice: string | null
+  history: HistorySnapshot[]
+  telegramAutoAlerts: boolean
   initialize: () => Promise<void>
   refresh: () => Promise<void>
   selectTower: (towerId: string | null) => void
@@ -41,11 +45,23 @@ interface MonitorStore {
   analyzeTopology: () => TopologyAnalysis
   interpretTopology: () => Promise<void>
   generateTopology: (prompt: string) => Promise<void>
+  setTelegramAutoAlerts: (enabled: boolean) => Promise<void>
+  loadHistory: () => Promise<void>
 }
 
 let previousTowers = new Map<string, TowerState>()
 let monitoringStarted = false
 const makeEvent = (event: Omit<MonitorEvent, 'id' | 'timestamp'>): MonitorEvent => ({ ...event, id: crypto.randomUUID(), timestamp: new Date().toISOString() })
+
+const summarizeTowers = (towers: TowerState[]) => ({
+  total: towers.length,
+  online: towers.filter((tower) => tower.status === 'online').length,
+  degraded: towers.filter((tower) => tower.status === 'degraded').length,
+  offline: towers.filter((tower) => tower.status === 'offline').length,
+  gridOutages: towers.filter((tower) => !tower.isGridPowerActive).length,
+  avgBattery: Math.round(towers.reduce((sum, tower) => sum + tower.batteryLevel, 0) / Math.max(1, towers.length)),
+  avgSignal: Math.round(towers.reduce((sum, tower) => sum + tower.signalStrength, 0) / Math.max(1, towers.length)),
+})
 
 const collectTransitions = (current: TowerState[], previous: Map<string, TowerState>) => {
   const events: Array<Omit<MonitorEvent, 'id' | 'timestamp'>> = []
@@ -63,8 +79,10 @@ const collectTransitions = (current: TowerState[], previous: Map<string, TowerSt
 export const useMonitorStore = create<MonitorStore>((set, get) => ({
   towers: [], events: [], networkLogs: [], selectedTowerId: null, activePage: 'dashboard', simulationTarget: null, dataSource: 'mock', loading: true, lastRefresh: null,
   networkNodes: [], networkLinks: [], selectedNodeId: null, topologyAnalysis: null, topologyAiAdvice: null,
+  history: [], telegramAutoAlerts: false,
   initialize: async () => {
     await get().refresh()
+    void get().loadHistory()
     if (monitoringStarted) return
     monitoringStarted = true
     window.setInterval(() => void get().refresh(), appEnv.pollIntervalMs)
@@ -98,6 +116,15 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
           ...state.networkLogs,
         ].slice(0, 300),
       }))
+      if (newEvents.length) {
+        void postHistorySnapshot(towers)
+        const alertEvents = newEvents.filter((event) => event.type === 'power-outage' || event.type === 'battery-critical' || event.type === 'status-change')
+        const alertMessage = alertEvents.map((event) => `• ${event.message}`).join('\n')
+        if (alertMessage && get().telegramAutoAlerts) {
+          void sendTelegramAlert(alertMessage).catch(() => undefined)
+        }
+        set((state) => ({ history: [...state.history, { timestamp: new Date().toISOString(), summary: summarizeTowers(towers), towers: towers.map((tower) => ({ id: tower.id, name: tower.name, status: tower.status, batteryLevel: Math.round(tower.batteryLevel), isGridPowerActive: tower.isGridPowerActive })) }].slice(-200) }))
+      }
       if (newEvents.some((event) => event.type !== 'restored')) {
         const analysis = await analyzeNetwork(towers)
         set((state) => ({ events: state.events.map((event) => newEvents.some((newEvent) => newEvent.id === event.id) ? { ...event, analysis } : event) }))
@@ -184,5 +211,22 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
       topologyAiAdvice: actionSummary,
     })
     get().addEvent({ type: 'summary', message: 'گزارش اجرای چیدمان هوشمند روی نقشه', analysis: actionSummary })
+  },
+  setTelegramAutoAlerts: async (enabled) => {
+    set({ telegramAutoAlerts: enabled })
+    try {
+      const status = await saveTelegramAutoAlerts(enabled)
+      set({ telegramAutoAlerts: status.autoAlerts })
+    } catch (error) {
+      console.error('Unable to update Telegram auto alerts', error)
+    }
+  },
+  loadHistory: async () => {
+    try {
+      const snapshots = await fetchHistory()
+      set({ history: snapshots.slice(-200) })
+    } catch (error) {
+      console.error('Unable to load tower history', error)
+    }
   },
 }))

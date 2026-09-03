@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, readFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import dns from 'node:dns/promises'
@@ -27,6 +27,11 @@ loadEnv()
 const port = Number(process.env.PORT || 8787)
 const execFileAsync = promisify(execFile)
 const distDir = join(process.cwd(), 'dist')
+const dataDir = join(process.cwd(), '.data')
+mkdirSync(dataDir, { recursive: true })
+const telegramConfigPath = join(dataDir, 'telegram-config.json')
+const historyPath = join(dataDir, 'tower-history.jsonl')
+const historyLimit = Number(process.env.HISTORY_LIMIT || 2000)
 const openRouterBaseUrl = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')
 const openRouterModel = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini'
 const contentTypes = {
@@ -41,6 +46,59 @@ const contentTypes = {
 function sendJson(response, status, body) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
   response.end(JSON.stringify(body))
+}
+
+function readBody(request) {
+  return new Promise((resolve, reject) => {
+    let body = ''
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', () => {
+      try {
+        resolve(body ? JSON.parse(body) : {})
+      } catch {
+        reject(new Error('Invalid JSON body.'))
+      }
+    })
+    request.on('error', reject)
+  })
+}
+
+function loadTelegramConfig() {
+  try {
+    const config = JSON.parse(readFileSync(telegramConfigPath, 'utf8'))
+    if (typeof config.token === 'string' && typeof config.chatId === 'string') return config
+  } catch {}
+  return { token: '', chatId: '', autoAlerts: false }
+}
+
+function saveTelegramConfig(config) {
+  writeFileSync(telegramConfigPath, JSON.stringify(config, null, 2), 'utf8')
+}
+
+async function sendTelegramMessage(token, chatId, text) {
+  const telegram = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  })
+  let result = {}
+  try { result = await telegram.json() } catch {}
+  if (!telegram.ok || !result.ok) throw new Error(result.description || 'Telegram rejected the request.')
+}
+
+function readHistory() {
+  try {
+    return readFileSync(historyPath, 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line))
+  } catch {
+    return []
+  }
+}
+
+function appendHistory(entry) {
+  const lines = readHistory()
+  lines.push(entry)
+  const overflow = lines.length - historyLimit
+  writeFileSync(historyPath, lines.slice(Math.max(0, overflow)).map((item) => JSON.stringify(item)).join('\n') + '\n', 'utf8')
 }
 
 function requireApiKey(response) {
@@ -201,11 +259,92 @@ createServer(async (request, response) => {
         const input = JSON.parse(body)
         if (!input?.chart) return sendJson(response, 400, { error: 'Chart configuration is required.' })
         const upstream = await fetch('https://quickchart.io/chart', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chart: input.chart, width: input.width || 1100, height: input.height || 520, format: input.format || 'png', backgroundColor: '#0f172a' }) })
+        if (!upstream.ok) throw new Error(`QuickChart upstream returned ${upstream.status}`)
         const buffer = Buffer.from(await upstream.arrayBuffer())
         response.writeHead(upstream.status, { 'Content-Type': upstream.headers.get('content-type') || 'image/png', 'Cache-Control': 'no-store' })
         response.end(buffer)
       } catch { sendJson(response, 502, { error: 'QuickChart request failed.' }) }
     })
+    return
+  }
+
+  if (url.pathname === '/api/admin/telegram/send' && request.method === 'POST') {
+    let body = ''
+    request.on('data', (chunk) => { body += chunk })
+    request.on('end', async () => {
+      try {
+        const input = JSON.parse(body)
+        if (typeof input.token !== 'string' || typeof input.chatId !== 'string' || !input.token || !input.chatId) return sendJson(response, 400, { error: 'Bot token and chat ID are required.' })
+        const towers = Array.isArray(input.towers) ? input.towers : []
+        const critical = towers.filter((tower) => Number(tower.batteryLevel ?? 100) < 20 || tower.status === 'offline')
+        const text = [`📡 Telecom Tower Monitor`, `🕒 ${new Date().toISOString()}`, `📊 Total towers: ${towers.length}`, `✅ Online: ${towers.filter((tower) => tower.status === 'online').length}`, `🚨 Critical: ${critical.length}`, ...critical.slice(0, 10).map((tower) => `• ${tower.name} — ${tower.status}, battery ${Math.round(tower.batteryLevel ?? 0)}%`)].join('\n')
+        const telegram = await fetch(`https://api.telegram.org/bot${encodeURIComponent(input.token)}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: input.chatId, text }) })
+        const result = await telegram.json()
+        if (!telegram.ok || !result.ok) return sendJson(response, 502, { error: result.description || 'Telegram rejected the request.' })
+        sendJson(response, 200, { ok: true })
+      } catch (error) { sendJson(response, 400, { error: error instanceof Error ? error.message : 'Telegram request failed.' }) }
+    })
+    return
+  }
+
+  if (url.pathname === '/api/admin/telegram/config' && request.method === 'GET') {
+    const config = loadTelegramConfig()
+    sendJson(response, 200, { connected: Boolean(config.token && config.chatId), autoAlerts: Boolean(config.autoAlerts) })
+    return
+  }
+
+  if (url.pathname === '/api/admin/telegram/config' && request.method === 'POST') {
+    try {
+      const input = await readBody(request)
+      const config = loadTelegramConfig()
+      const next = {
+        token: typeof input.token === 'string' && input.token ? input.token : config.token,
+        chatId: typeof input.chatId === 'string' && input.chatId ? input.chatId : config.chatId,
+        autoAlerts: typeof input.autoAlerts === 'boolean' ? input.autoAlerts : Boolean(config.autoAlerts),
+      }
+      saveTelegramConfig(next)
+      sendJson(response, 200, { connected: Boolean(next.token && next.chatId), autoAlerts: next.autoAlerts })
+    } catch (error) { sendJson(response, 400, { error: error instanceof Error ? error.message : 'Invalid config update.' }) }
+    return
+  }
+
+  if (url.pathname === '/api/admin/telegram/alert' && request.method === 'POST') {
+    try {
+      const input = await readBody(request)
+      const config = loadTelegramConfig()
+      if (!config.token || !config.chatId) return sendJson(response, 400, { error: 'Telegram bot is not configured yet.' })
+      if (!config.autoAlerts) return sendJson(response, 200, { ok: true, skipped: true })
+      const text = [`🚨 هشدار خودکار`, `🕒 ${new Date().toLocaleString('fa-IR')}`, String(input.message || '').trim()].filter(Boolean).join('\n')
+      await sendTelegramMessage(config.token, config.chatId, text)
+      sendJson(response, 200, { ok: true, skipped: false })
+    } catch (error) { sendJson(response, 400, { error: error instanceof Error ? error.message : 'Telegram alert failed.' }) }
+    return
+  }
+
+  if (url.pathname === '/api/history' && request.method === 'POST') {
+    try {
+      const input = await readBody(request)
+      const towers = Array.isArray(input.towers) ? input.towers : []
+      appendHistory({
+        timestamp: typeof input.timestamp === 'string' ? input.timestamp : new Date().toISOString(),
+        summary: {
+          total: towers.length,
+          online: towers.filter((tower) => tower.status === 'online').length,
+          degraded: towers.filter((tower) => tower.status === 'degraded').length,
+          offline: towers.filter((tower) => tower.status === 'offline').length,
+          gridOutages: towers.filter((tower) => !tower.isGridPowerActive).length,
+          avgBattery: Math.round(towers.reduce((sum, tower) => sum + Number(tower.batteryLevel ?? 0), 0) / Math.max(1, towers.length)),
+          avgSignal: Math.round(towers.reduce((sum, tower) => sum + Number(tower.signalStrength ?? 0), 0) / Math.max(1, towers.length)),
+        },
+        towers: towers.map((tower) => ({ id: tower.id, name: tower.name, status: tower.status, batteryLevel: Math.round(Number(tower.batteryLevel ?? 0)), isGridPowerActive: Boolean(tower.isGridPowerActive) })),
+      })
+      sendJson(response, 200, { ok: true })
+    } catch (error) { sendJson(response, 400, { error: error instanceof Error ? error.message : 'History snapshot failed.' }) }
+    return
+  }
+
+  if (url.pathname === '/api/history' && request.method === 'GET') {
+    sendJson(response, 200, { snapshots: readHistory() })
     return
   }
 

@@ -8,6 +8,7 @@ import { useMonitorStore } from './store'
 import type { DataSource } from './types'
 import { useI18n } from './i18n'
 import { Analytics } from './pages/Analytics'
+import { Admin } from './pages/Admin'
 
 const dataSourceLabels: Record<DataSource, string> = {
   'telecom-api': 'متصل به API مخابرات',
@@ -27,6 +28,7 @@ export default function App() {
   const { language, toggleLanguage, t } = useI18n()
 
   useEffect(() => { void initialize() }, [initialize])
+  if (window.location.pathname === '/admin') return <Admin />
 
   return (
     <main dir={language === 'fa' ? 'rtl' : 'ltr'} className="min-h-screen bg-canvas text-slate-100">
