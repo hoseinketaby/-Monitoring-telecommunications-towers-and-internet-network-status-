@@ -27,6 +27,12 @@ interface MonitorStore {
   topologyAiAdvice: string | null
   history: HistorySnapshot[]
   telegramAutoAlerts: boolean
+  refreshIntervalMs: number
+  autoRefreshEnabled: boolean
+  dashboardQuery: string
+  setDashboardQuery: (query: string) => void
+  setRefreshIntervalMs: (value: number) => void
+  setAutoRefreshEnabled: (enabled: boolean) => void
   initialize: () => Promise<void>
   refresh: () => Promise<void>
   selectTower: (towerId: string | null) => void
@@ -80,12 +86,17 @@ export const useMonitorStore = create<MonitorStore>((set, get) => ({
   towers: [], events: [], networkLogs: [], selectedTowerId: null, activePage: 'dashboard', simulationTarget: null, dataSource: 'mock', loading: true, lastRefresh: null,
   networkNodes: [], networkLinks: [], selectedNodeId: null, topologyAnalysis: null, topologyAiAdvice: null,
   history: [], telegramAutoAlerts: false,
+  refreshIntervalMs: appEnv.pollIntervalMs,
+  autoRefreshEnabled: true,
+  dashboardQuery: '',
+  setDashboardQuery: (query) => set({ dashboardQuery: query }),
+  setRefreshIntervalMs: (value) => set({ refreshIntervalMs: Math.max(5_000, Math.round(value)) }),
+  setAutoRefreshEnabled: (enabled) => set({ autoRefreshEnabled: enabled }),
   initialize: async () => {
     await get().refresh()
     void get().loadHistory()
     if (monitoringStarted) return
     monitoringStarted = true
-    window.setInterval(() => void get().refresh(), appEnv.pollIntervalMs)
     window.setInterval(async () => {
       const towers = get().towers
       if (!towers.length) return

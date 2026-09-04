@@ -3,7 +3,7 @@ export type DataSource = 'telecom-api' | 'database' | 'json-seed' | 'mock'
 export type MapTool = 'tower' | 'bts' | 'microwave' | 'fiber' | 'router' | 'core' | 'power'
 export type NetworkNodeKind = MapTool
 export type LinkMedium = 'fiber' | 'microwave' | 'ethernet'
-export type AppPage = 'dashboard' | 'map' | 'simulation' | 'network-logs' | 'analytics'
+export type AppPage = 'dashboard' | 'map' | 'simulation' | 'network-logs' | 'analytics' | 'investor'
 export type SimulationTarget =
   | { type: 'tower'; towerId: string }
   | { type: 'tool'; tool: MapTool }
